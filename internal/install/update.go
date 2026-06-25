@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/adtzlowy/luna/internal/config"
+	"github.com/adtzslowy/luna/internal/config"
 )
 
 type UpdateResult struct {

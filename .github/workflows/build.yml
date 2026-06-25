@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+    branches: [ main ]
   pull_request:
     branches: [ main ]
 
@@ -12,6 +13,7 @@ jobs:
     name: Build ${{ matrix.os }}
     runs-on: ${{ matrix.runner }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: darwin-amd64
@@ -20,7 +22,7 @@ jobs:
             goarch: amd64
             ext: ""
           - os: darwin-arm64
-            runner: macos-14
+            runner: macos-latest
             goos: darwin
             goarch: arm64
             ext: ""
@@ -36,20 +38,22 @@ jobs:
             ext: ".exe"
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
+          cache: false
 
       - name: Build
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
         run: |
-          go build -ldflags="-s -w -X main.version=${{ github.ref_name }}" \
-            -o luna-${{ matrix.os }}${{ matrix.ext }} ./cmd/luna
+          go build -ldflags="-s -w" -o luna-${{ matrix.os }}${{ matrix.ext }} ./cmd
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -64,18 +68,23 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Download artifacts
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
+        with:
+          path: artifacts
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            luna-darwin-amd64/luna-darwin-amd64
-            luna-darwin-arm64/luna-darwin-arm64
-            luna-linux-amd64/luna-linux-amd64
-            luna-windows-amd64/luna-windows-amd64.exe
+            artifacts/luna-darwin-amd64/luna-darwin-amd64
+            artifacts/luna-darwin-arm64/luna-darwin-arm64
+            artifacts/luna-linux-amd64/luna-linux-amd64
+            artifacts/luna-windows-amd64/luna-windows-amd64.exe
           generate_release_notes: true
           draft: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
