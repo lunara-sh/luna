@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/adtzslowy/luna/internal/browser"
 	"github.com/adtzslowy/luna/internal/config"
 	"github.com/adtzslowy/luna/internal/install"
+	"github.com/adtzslowy/luna/internal/logs"
 	"github.com/adtzslowy/luna/internal/service"
 	"github.com/adtzslowy/luna/internal/ui"
 )
@@ -383,17 +385,24 @@ func cmdLogs(mgr *service.Manager, args []string) {
 	lines := 50
 	name := ""
 
-	for _, arg := range args {
-		switch arg {
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
 		case "-f", "--follow":
 			follow = true
+		case "-n", "--lines":
+			if i+1 < len(args) {
+				if n, err := strconv.Atoi(args[i+1]); err == nil && n > 0 {
+					lines = n
+				}
+				i++
+			}
 		default:
-			name = arg
+			name = args[i]
 		}
 	}
 
 	if name == "" {
-		ui.PrintError("Usage: luna logs <service> [-f]")
+		ui.PrintError("Usage: luna logs <service> [-f] [-n lines]")
 		ui.PrintInfo("Services: caddy, postgresql, mysql, php")
 		os.Exit(1)
 	}
@@ -413,7 +422,7 @@ func cmdLogs(mgr *service.Manager, args []string) {
 	ui.PrintInfo(fmt.Sprintf("Logs for %s (%s)", svc.Name, svc.LogFile))
 	fmt.Println()
 
-	if err := logs.Tail(svc.LogFile, follow, 50); err != nil {
+	if err := logs.Tail(svc.LogFile, follow, lines); err != nil {
 		ui.PrintError(err.Error())
 		os.Exit(1)
 	}
