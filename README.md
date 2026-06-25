@@ -359,8 +359,7 @@ Konfigurasi Luna tersimpan di `~/.luna/luna.json`. File ini otomatis dibuat saat
 ```
 luna/
 ├── cmd/
-│   └── luna/
-│       └── main.go            # Entry point CLI
+│   └── runtime.go             # Entry point CLI
 ├── internal/
 │   ├── config/
 │   │   └── config.go          # Konfigurasi & default paths
