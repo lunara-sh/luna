@@ -11,28 +11,24 @@ on:
 jobs:
   build:
     name: Build ${{ matrix.os }}
-    runs-on: ${{ matrix.runner }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: darwin-amd64
-            runner: macos-13
             goos: darwin
             goarch: amd64
             ext: ""
           - os: darwin-arm64
-            runner: macos-latest
             goos: darwin
             goarch: arm64
             ext: ""
           - os: linux-amd64
-            runner: ubuntu-latest
             goos: linux
             goarch: amd64
             ext: ""
           - os: windows-amd64
-            runner: windows-latest
             goos: windows
             goarch: amd64
             ext: ".exe"
