@@ -91,43 +91,6 @@ func (m *Manager) Start(name string) error {
 	return nil
 }
 
-func (m *Manager) Stop(name string) error {
-	svc, ok := m.cfg.Services[name]
-	if !ok {
-		return fmt.Errorf("unknown service: %s", name)
-	}
-
-	status := m.Status(name)
-	if status.State == StateStopped {
-		return fmt.Errorf("%s is not running", svc.Name)
-	}
-
-	if status.PID > 0 {
-		if err := process.KillPid(status.PID); err != nil {
-			return fmt.Errorf("failed to stop %s: %w", svc.Name, err)
-		}
-	} else {
-		binName := filepath.Base(svc.BinaryPath)
-		if runtime.GOOS == "windows" && !strings.HasSuffix(strings.ToLower(binName), ".exe") {
-			binName += ".exe"
-		}
-		pids, err := process.FindProcessByName(binName)
-		if err != nil || len(pids) == 0 {
-			return fmt.Errorf("cannot find %s process to stop", svc.Name)
-		}
-		for _, pid := range pids {
-			process.KillPid(pid)
-		}
-	}
-
-	if svc.PidFile != "" {
-		os.Remove(svc.PidFile)
-	}
-
-	delete(m.cmds, name)
-	return nil
-}
-
 func (m *Manager) Restart(name string) error {
 	if _, ok := m.cfg.Services[name]; !ok {
 		return fmt.Errorf("unknown service: %s", name)
