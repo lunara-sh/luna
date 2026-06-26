@@ -26,10 +26,16 @@ func ReadPidFile(path string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	pidStr := strings.TrimSpace(string(data))
-	pid, err := strconv.Atoi(pidStr)
+	// Some pid files (e.g. PostgreSQL's postmaster.pid) store the PID on the
+	// first line followed by additional metadata, so only parse the first line.
+	content := strings.TrimSpace(string(data))
+	firstLine := content
+	if idx := strings.IndexAny(content, "\r\n"); idx >= 0 {
+		firstLine = strings.TrimSpace(content[:idx])
+	}
+	pid, err := strconv.Atoi(firstLine)
 	if err != nil {
-		return 0, fmt.Errorf("invalid pid in %s: %s", path, pidStr)
+		return 0, fmt.Errorf("invalid pid in %s: %s", path, firstLine)
 	}
 	return pid, nil
 }
@@ -71,21 +77,33 @@ func FindProcessByName(name string) ([]int, error) {
 }
 
 func findByNameUnix(name string) ([]int, error) {
-	out, err := exec.Command("pgrep", "-x", name).Output()
-	if err != nil {
-		return nil, nil
+	// First try an exact process-name match (handles caddy, mysqld, etc.).
+	if pids := pgrep("-x", name); len(pids) > 0 {
+		return pids, nil
 	}
+	// Fall back to a full command-line match. Some daemons rewrite their
+	// process name (e.g. PHP-FPM workers show up as "php-fpm: pool www"),
+	// so an exact match misses them while a full-line match catches them.
+	return pgrep("-f", name), nil
+}
+
+func pgrep(flag, name string) []int {
+	out, err := exec.Command("pgrep", flag, name).Output()
+	if err != nil {
+		return nil
+	}
+	self := os.Getpid()
 	var pids []int
 	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
-		if pid, err := strconv.Atoi(line); err == nil {
+		if pid, err := strconv.Atoi(line); err == nil && pid != self {
 			pids = append(pids, pid)
 		}
 	}
-	return pids, nil
+	return pids
 }
 
 func findByNameWindows(name string) ([]int, error) {
